@@ -1,6 +1,10 @@
+
+
+//#![no_std]
+
 use std::error::Error;
-use std::fmt;
-use std::num::ParseIntError;
+use core::fmt;
+use core::num::ParseIntError;
 
 use structopt::StructOpt;
 
@@ -34,13 +38,7 @@ impl fmt::Display for RadixError {
 
 impl Error for RadixError {}
 
-fn main() {
-    _main().unwrap_or_else(|err| {
-        println!("{}", err);
-    })
-}
-
-fn _main() -> Result<(), RadixError> {
+fn main() -> Result<(), RadixError> {
     let mut radix: u32 = 10;
     let opt = Opt::from_args();
 
