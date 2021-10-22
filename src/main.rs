@@ -8,7 +8,6 @@ use structopt::StructOpt;
 
 #[derive(Debug)]
 enum RadixError {
-    InvalidWidth,
     InvalidInput(ParseIntError),
     NotImplementedOperator,
 }
@@ -16,7 +15,6 @@ enum RadixError {
 impl fmt::Display for RadixError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            RadixError::InvalidWidth => f.write_str("Invalid width"),
             RadixError::InvalidInput(i) => fmt::Display::fmt(&i, f),
             RadixError::NotImplementedOperator => f.write_str("Operator not implemented"),
         }
@@ -64,17 +62,11 @@ struct Opt {
 
     #[structopt(parse(try_from_str = parse_hex))]
     input2: Option<i64>,
-
-    #[structopt(short, long, default_value = "32")]
-    width: usize,
 }
 
 fn main() -> Result<(), RadixError> {
     let opt = Opt::from_args();
 
-    if (opt.width % 2) != 0 {
-        return Err(RadixError::InvalidWidth);
-    }
     let mut result = opt.input1;
 
     if let Some(o) = opt.operator {
