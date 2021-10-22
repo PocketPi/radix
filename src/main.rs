@@ -23,7 +23,7 @@ impl fmt::Display for RadixError {
 
 impl Error for RadixError {}
 
-fn parse_hex(src: &str) -> Result<i64, RadixError> {
+fn parse_hex(src: &str) -> Result<isize, RadixError> {
     let mut radix = 10;
     let stripped = match src.strip_prefix("0x") {
         Some(v) => {
@@ -33,12 +33,12 @@ fn parse_hex(src: &str) -> Result<i64, RadixError> {
         None => &src,
     };
 
-    let value: i64 = i64::from_str_radix(stripped, radix)
+    let value: isize = isize::from_str_radix(stripped, radix)
         .or_else(|e| {
             if radix == 10 {
                 println!("Failed parsing in radix 10. Trying radix 16!");
                 radix = 16;
-                i64::from_str_radix(stripped, radix)
+                isize::from_str_radix(stripped, radix)
             } else {
                 Err(e)
             }
@@ -56,12 +56,12 @@ fn parse_hex(src: &str) -> Result<i64, RadixError> {
 )]
 struct Opt {
     #[structopt(parse(try_from_str = parse_hex))]
-    input1: i64,
+    input1: isize,
 
     operator: Option<String>,
 
     #[structopt(parse(try_from_str = parse_hex))]
-    input2: Option<i64>,
+    input2: Option<isize>,
 }
 
 fn main() -> Result<(), RadixError> {
