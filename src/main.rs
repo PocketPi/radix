@@ -43,7 +43,6 @@ impl fmt::Display for RadixError {
 impl Error for RadixError {}
 
 fn str_to_int(input: String) -> Result<i64, RadixError> {
-
     let mut radix = 10;
     let stripped = match input.strip_prefix("0x") {
         Some(v) => {
@@ -65,7 +64,7 @@ fn str_to_int(input: String) -> Result<i64, RadixError> {
         })
         .map_err(RadixError::InvalidInput)?;
 
-        Ok(value)
+    Ok(value)
 }
 
 fn main() -> Result<(), RadixError> {
