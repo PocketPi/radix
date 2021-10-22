@@ -1,10 +1,8 @@
-
-
 //#![no_std]
 
-use std::error::Error;
 use core::fmt;
 use core::num::ParseIntError;
+use std::error::Error;
 
 use structopt::StructOpt;
 
@@ -15,7 +13,11 @@ use structopt::StructOpt;
     about = "Tool that will convert input number of any radix to dec, hex and bin."
 )]
 struct Opt {
-    input: String,
+    input1: String,
+
+    operator: Option<String>,
+
+    input2: Option<String>,
 
     #[structopt(short, long, default_value = "32")]
     width: usize,
@@ -25,6 +27,7 @@ struct Opt {
 enum RadixError {
     InvalidWidth,
     InvalidInput(ParseIntError),
+    NotImplementedOperator,
 }
 
 impl fmt::Display for RadixError {
@@ -32,21 +35,16 @@ impl fmt::Display for RadixError {
         match self {
             RadixError::InvalidWidth => f.write_str("Invalid width"),
             RadixError::InvalidInput(i) => fmt::Display::fmt(&i, f),
+            RadixError::NotImplementedOperator => f.write_str("Operator not implemented"),
         }
     }
 }
 
 impl Error for RadixError {}
 
-fn main() -> Result<(), RadixError> {
-    let mut radix: u32 = 10;
-    let opt = Opt::from_args();
+fn str_to_int(input: String) -> Result<i64, RadixError> {
 
-    if (opt.width % 2) != 0 {
-        return Err(RadixError::InvalidWidth);
-    }
-
-    let input = opt.input;
+    let mut radix = 10;
     let stripped = match input.strip_prefix("0x") {
         Some(v) => {
             radix = 16;
@@ -55,20 +53,53 @@ fn main() -> Result<(), RadixError> {
         None => &input,
     };
 
-    let v = i64::from_str_radix(stripped, radix)
+    let value: i64 = i64::from_str_radix(stripped, radix)
         .or_else(|e| {
             if radix == 10 {
                 println!("Failed parsing in radix 10. Trying radix 16!");
-                i64::from_str_radix(stripped, 16)
+                radix = 16;
+                i64::from_str_radix(stripped, radix)
             } else {
                 Err(e)
             }
         })
-        .map_err(|e| RadixError::InvalidInput(e))?;
+        .map_err(RadixError::InvalidInput)?;
 
-    println!("dec: {:}", v);
-    println!("hex: 0x{:0>width$x}", v, width = opt.width / 8);
-    println!("bin: 0b{:0>width$b}", v, width = opt.width / 2);
+        Ok(value)
+}
+
+fn main() -> Result<(), RadixError> {
+    let opt = Opt::from_args();
+
+    if (opt.width % 2) != 0 {
+        return Err(RadixError::InvalidWidth);
+    }
+
+    let value1 = str_to_int(opt.input1)?;
+
+    let value2 = match opt.input2 {
+        Some(v) => Some(str_to_int(v)?),
+        None => None,
+    };
+
+    let mut result = value1;
+
+    if let Some(o) = opt.operator {
+        if let Some(v) = value2 {
+            result = match o.as_str() {
+                "+" => value1.wrapping_add(v),
+                "-" => value1.wrapping_sub(v),
+                "*" => value1.wrapping_mul(v),
+                "/" => value1.wrapping_div(v),
+                "%" => value1 % v,
+                _ => return Err(RadixError::NotImplementedOperator),
+            };
+        };
+    };
+
+    println!("dec: {:}", result);
+    println!("hex: 0x{:x}", result);
+    println!("bin: 0b{:b}", result);
 
     Ok(())
 }
