@@ -6,23 +6,6 @@ use std::error::Error;
 
 use structopt::StructOpt;
 
-/// Search for a pattern in a file and display the lines that contain it.
-#[derive(Debug, StructOpt)]
-#[structopt(
-    name = "radix",
-    about = "Tool that will convert input number of any radix to dec, hex and bin."
-)]
-struct Opt {
-    input1: String,
-
-    operator: Option<String>,
-
-    input2: Option<String>,
-
-    #[structopt(short, long, default_value = "32")]
-    width: usize,
-}
-
 #[derive(Debug)]
 enum RadixError {
     InvalidWidth,
@@ -42,14 +25,14 @@ impl fmt::Display for RadixError {
 
 impl Error for RadixError {}
 
-fn str_to_int(input: String) -> Result<i64, RadixError> {
+fn parse_hex(src: &str) -> Result<i64, RadixError> {
     let mut radix = 10;
-    let stripped = match input.strip_prefix("0x") {
+    let stripped = match src.strip_prefix("0x") {
         Some(v) => {
             radix = 16;
             v
         }
-        None => &input,
+        None => &src,
     };
 
     let value: i64 = i64::from_str_radix(stripped, radix)
@@ -67,30 +50,41 @@ fn str_to_int(input: String) -> Result<i64, RadixError> {
     Ok(value)
 }
 
+/// Search for a pattern in a file and display the lines that contain it.
+#[derive(Debug, StructOpt)]
+#[structopt(
+    name = "radix",
+    about = "Tool that will convert input number of any radix to dec, hex and bin."
+)]
+struct Opt {
+    #[structopt(parse(try_from_str = parse_hex))]
+    input1: i64,
+
+    operator: Option<String>,
+
+    #[structopt(parse(try_from_str = parse_hex))]
+    input2: Option<i64>,
+
+    #[structopt(short, long, default_value = "32")]
+    width: usize,
+}
+
 fn main() -> Result<(), RadixError> {
     let opt = Opt::from_args();
 
     if (opt.width % 2) != 0 {
         return Err(RadixError::InvalidWidth);
     }
-
-    let value1 = str_to_int(opt.input1)?;
-
-    let value2 = match opt.input2 {
-        Some(v) => Some(str_to_int(v)?),
-        None => None,
-    };
-
-    let mut result = value1;
+    let mut result = opt.input1;
 
     if let Some(o) = opt.operator {
-        if let Some(v) = value2 {
+        if let Some(v) = opt.input2 {
             result = match o.as_str() {
-                "+" => value1.wrapping_add(v),
-                "-" => value1.wrapping_sub(v),
-                "*" => value1.wrapping_mul(v),
-                "/" => value1.wrapping_div(v),
-                "%" => value1 % v,
+                "+" => result.wrapping_add(v),
+                "-" => result.wrapping_sub(v),
+                "*" => result.wrapping_mul(v),
+                "/" => result.wrapping_div(v),
+                "%" => result % v,
                 _ => return Err(RadixError::NotImplementedOperator),
             };
         };
