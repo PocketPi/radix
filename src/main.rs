@@ -30,7 +30,7 @@ fn parse_hex(src: &str) -> Result<isize, RadixError> {
             radix = 16;
             v
         }
-        None => &src,
+        None => src,
     };
 
     let value: isize = isize::from_str_radix(stripped, radix)
