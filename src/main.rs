@@ -6,6 +6,8 @@ use std::error::Error;
 
 use structopt::StructOpt;
 
+extern crate base64;
+
 #[derive(Debug)]
 enum RadixError {
     InvalidInput(ParseIntError),
@@ -60,8 +62,8 @@ fn parse_hex(src: &str) -> Result<isize, RadixError> {
 struct Opt {
 
     /// Required argument, input value in dec or hex format
-    #[structopt(parse(try_from_str = parse_hex))]
-    input1: Option<isize>,
+    #[structopt()]
+    input1: String,
 
     /// Required if two input values are given
     #[structopt(requires("input2"), possible_values(&["+", "-", "*", "/", "%"]))]
@@ -74,50 +76,65 @@ struct Opt {
     /// Width determines how many bits is used to show the result value.
     #[structopt(short, long, requires("input1"), possible_values(&["2", "4", "8", "16", "32", "64"]))]
     width: Option<usize>,
+
+    /// Decode base64 strings
+    #[structopt(short, long)]
+    decode: bool,
+
+    /// Encode base64 strings
+    #[structopt(short, long)]
+    encode: bool,
 }
 
 fn main() -> Result<(), RadixError> {
     let opt = Opt::from_args();
 
-    if let Some(mut r) = opt.input1 {
-        if let Some(o) = opt.operator {
-            if let Some(v) = opt.input2 {
-                r = match o.as_str() {
-                    "+" => r.wrapping_add(v),
-                    "-" => r.wrapping_sub(v),
-                    "*" => r.wrapping_mul(v),
-                    "/" => r.wrapping_div(v),
-                    "%" => r % v,
-                    _ => return Err(RadixError::NotImplementedOperator),
+    if opt.decode {
+        let string = String::from_utf8(base64::decode(&opt.input1).unwrap()).unwrap();
+        println!("{:}", string);
+    } else if opt.encode {
+        println!("{:}", base64::encode(&opt.input1));
+    } else {
+        if let Ok(mut r) = parse_hex(&opt.input1) {
+            if let Some(o) = opt.operator {
+                if let Some(v) = opt.input2 {
+                    r = match o.as_str() {
+                        "+" => r.wrapping_add(v),
+                        "-" => r.wrapping_sub(v),
+                        "*" => r.wrapping_mul(v),
+                        "/" => r.wrapping_div(v),
+                        "%" => r % v,
+                        _ => return Err(RadixError::NotImplementedOperator),
+                    };
                 };
             };
-        };
 
-        let mut width: usize = 2;
-        if r / 2_isize.pow(4) >= 1 {
-            width = 8;
-            if r / 2_isize.pow(width as u32) >= 1 {
-                width = 16;
-                if (r / 2_isize.pow(width as u32)) >= 1 {
-                    width = 32;
+            let mut width: usize = 2;
+            if r / 2_isize.pow(4) >= 1 {
+                width = 8;
+                if r / 2_isize.pow(width as u32) >= 1 {
+                    width = 16;
                     if (r / 2_isize.pow(width as u32)) >= 1 {
-                        width = 64;
+                        width = 32;
+                        if (r / 2_isize.pow(width as u32)) >= 1 {
+                            width = 64;
+                        }
                     }
                 }
             }
-        }
 
-        if let Some(w) = opt.width {
-            if width > w {
-                println!("Width not wide enough to reprecent result, setting width to: {:}", width);
-            } else {
-                width = w;
+            if let Some(w) = opt.width {
+                if width > w {
+                    println!("Width not wide enough to reprecent result, setting width to: {:}", width);
+                } else {
+                    width = w;
+                }
             }
-        }
 
-        println!("dec: {:}", r);
-        println!("hex: 0x{:01$x}", r, width / 4);
-        println!("bin: 0b{:01$b}", r, width);
+            println!("dec: {:}", r);
+            println!("hex: 0x{:01$x}", r, width / 4);
+            println!("bin: 0b{:01$b}", r, width);
+        }
     };
 
     Ok(())
